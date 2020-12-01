@@ -309,16 +309,16 @@ class BartEncoder(nn.Module):
         embed_dim = embed_tokens.embedding_dim
         self.embed_scale = math.sqrt(embed_dim) if config.scale_embedding else 1.0
         self.padding_idx = embed_tokens.padding_idx
-        self.max_source_positions = config.max_position_embeddings
+        self.max_source_positions = getattr(config, 'max_encoder_position_embeddings', config.max_position_embeddings)
 
         self.embed_tokens = embed_tokens
         if config.static_position_embeddings:
             self.embed_positions = SinusoidalPositionalEmbedding(
-                config.max_position_embeddings, embed_dim, self.padding_idx
+                self.max_source_positions, embed_dim, self.padding_idx
             )
         else:
             self.embed_positions = LearnedPositionalEmbedding(
-                config.max_position_embeddings,
+                self.max_source_positions,
                 embed_dim,
                 self.padding_idx,
                 config.extra_pos_embeddings,
@@ -497,16 +497,16 @@ class BartDecoder(nn.Module):
         self.layerdrop = config.decoder_layerdrop
         self.do_blenderbot_90_layernorm = config.do_blenderbot_90_layernorm  # layernorm variant
         self.padding_idx = embed_tokens.padding_idx
-        self.max_target_positions = config.max_position_embeddings
+        self.max_target_positions = getattr(config, 'max_decoder_position_embeddings', config.max_position_embeddings)
         self.embed_scale = math.sqrt(config.d_model) if config.scale_embedding else 1.0
         self.embed_tokens = embed_tokens
         if config.static_position_embeddings:
             self.embed_positions = SinusoidalPositionalEmbedding(
-                config.max_position_embeddings, config.d_model, config.pad_token_id
+                self.max_target_positions, config.d_model, config.pad_token_id
             )
         else:
             self.embed_positions = LearnedPositionalEmbedding(
-                config.max_position_embeddings,
+                self.max_target_positions,
                 config.d_model,
                 self.padding_idx,
                 config.extra_pos_embeddings,
@@ -739,7 +739,7 @@ class Attention(nn.Module):
 
         if key_padding_mask is not None:  # don't attend to padding symbols
             attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len)
-            reshaped = key_padding_mask.unsqueeze(1).unsqueeze(2)
+            reshaped = key_padding_mask.unsqueeze(1).unsqueeze(2).bool()
             attn_weights = attn_weights.masked_fill(reshaped, float("-inf"))
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
         attn_weights = F.softmax(attn_weights, dim=-1)

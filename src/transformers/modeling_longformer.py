@@ -502,7 +502,7 @@ class LongformerSelfAttention(nn.Module):
         del local_attn_probs_fp32
 
         # softmax sometimes inserts NaN if all positions are masked, replace them with 0
-        local_attn_probs = torch.masked_fill(local_attn_probs, is_index_masked[:, :, None, None], 0.0)
+        # local_attn_probs = torch.masked_fill(local_attn_probs, is_index_masked[:, :, None, None], 0.0)
 
         # apply dropout
         local_attn_probs = F.dropout(local_attn_probs, p=self.dropout, training=self.training)
